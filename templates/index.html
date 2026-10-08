@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FertilizerGuide - Smart Recommendation Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <style>
+        body {
+            background-color: #f2f9f5;
+            background-image: radial-gradient(#198754 1.1px, transparent 1.1px);
+            background-size: 32px 32px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .navbar-custom {
+            background: #ffffff;
+            border-radius: 50rem;
+            margin: 20px auto;
+            max-width: 900px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+            padding: 10px 25px;
+            border: 1px solid rgba(25, 135, 84, 0.1);
+        }
+        .main-card {
+            background: #ffffff;
+            border: 1px solid rgba(25, 135, 84, 0.12);
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.03);
+        }
+        .form-control, .form-select {
+            border-radius: 0.75rem;
+            padding: 0.75rem 1rem;
+            background-color: #f8faf9;
+            border: 1px solid #dee2e6;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: #198754;
+            box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.12);
+            background-color: #fff;
+        }
+        .btn-custom-success {
+            background-color: #198754;
+            border-color: #198754;
+            border-radius: 50rem;
+            padding: 0.75rem 2rem;
+            font-weight: 600;
+        }
+        .btn-custom-success:hover {
+            background-color: #157347;
+            border-color: #146c43;
+        }
+        .step-badge {
+            width: 35px;
+            height: 35px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #e8f5ec;
+            color: #198754;
+            border: 2px solid #198754;
+            border-radius: 50%;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Floating Navbar -->
+    <nav class="navbar navbar-expand navbar-custom">
+        <div class="container-fluid">
+            <a class="navbar-brand fw-bold text-success d-flex align-items-center" href="/home">
+                <span class="fs-4 me-2">🌱</span> FertilizerGuide
+            </a>
+            <div class="navbar-nav ms-auto align-items-center">
+                <span class="text-secondary small me-3 d-none d-md-inline">Welcome, <strong>{{ username }}</strong></span>
+                <a class="nav-link text-success fw-semibold px-3" href="/home">Home</a>
+                <a class="nav-link text-success fw-semibold px-3 active" href="/">Predict</a>
+                <a href="/logout" class="btn btn-outline-danger btn-sm rounded-pill ms-2 px-3">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4 mb-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-9">
+                <!-- Header Title Section -->
+                <div class="text-center mb-5">
+                    <h1 class="fw-bold text-success mb-2" style="letter-spacing: -0.5px;">Get Your Smart Recommendation</h1>
+                    <p class="text-muted">Fill in your crop and soil details for a personalized precision analysis</p>
+                    
+                    <!-- Steps Indicator -->
+                    <div class="d-flex justify-content-center align-items-center mt-4 gap-4">
+                        <div class="text-center"><span class="step-badge">1</span><div class="small text-muted mt-1">Crop Data</div></div>
+                        <div style="width: 50px; height: 2px; background-color: #dee2e6;"></div>
+                        <div class="text-center"><span class="step-badge">2</span><div class="small text-muted mt-1">Ecological Details</div></div>
+                        <div style="width: 50px; height: 2px; background-color: #dee2e6;"></div>
+                        <div class="text-center"><span class="step-badge">3</span><div class="small text-muted mt-1">Soil Analysis</div></div>
+                    </div>
+                </div>
+
+                <!-- Main Card Container -->
+                <div class="main-card p-4 p-md-5 mb-4">
+                    <!-- Error Alert Box -->
+                    {% if error %}
+                    <div class="alert alert-danger alert-dismissible fade show mb-4 rounded-4" role="alert">
+                        <i class="fa-solid fa-triangle-exclamation me-2"></i><strong>Error:</strong> {{ error }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    {% endif %}
+
+                    <!-- Weather Fetch Section -->
+                    <div class="mb-4 p-3 rounded-4 bg-light border">
+                        <label class="form-label fw-semibold text-secondary small">Live Weather Integration (City Search)</label>
+                        <div class="input-group">
+                            <input type="text" id="cityInput" class="form-control" placeholder="Enter city name (e.g., Delhi, Mumbai)">
+                            <button type="button" id="fetchWeatherBtn" class="btn btn-outline-success px-4">Fetch Weather</button>
+                        </div>
+                        <small id="weatherStatus" class="form-text mt-1 d-block"></small>
+                    </div>
+
+                    <form action="/predict" method="POST">
+                        <input type="hidden" name="city" id="hiddenCity" value="Manual">
+                        
+                        <h5 class="text-success fw-bold mb-3"><i class="fa-solid fa-seedling me-2"></i>Soil & Environmental Parameters</h5>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-semibold small text-muted">Nitrogen (N)</label>
+                                <input type="number" step="any" name="nitrogen" class="form-control" placeholder="e.g. 50" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-semibold small text-muted">Phosphorus (P)</label>
+                                <input type="number" step="any" name="phosphorus" class="form-control" placeholder="e.g. 40" required>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-semibold small text-muted">Potassium (K)</label>
+                                <input type="number" step="any" name="potassium" class="form-control" placeholder="e.g. 30" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-semibold small text-muted">Temperature (°C)</label>
+                                <input type="number" step="any" id="tempField" name="temperature" class="form-control" placeholder="e.g. 28.5" required>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-semibold small text-muted">Humidity (%)</label>
+                                <input type="number" step="any" id="humidityField" name="humidity" class="form-control" placeholder="e.g. 65" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-semibold small text-muted">pH Level</label>
+                                <input type="number" step="any" name="ph" class="form-control" placeholder="e.g. 6.5" required>
+                            </div>
+                        </div>
+                        <div class="row mb-4">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-semibold small text-muted">Rainfall (mm)</label>
+                                <input type="number" step="any" name="rainfall" class="form-control" placeholder="e.g. 200" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-semibold small text-muted">Soil Type</label>
+                                <select name="soil_type" class="form-select" required>
+                                    <option value="" disabled selected>Choose soil type</option>
+                                    <option value="0">Sandy Soil (0)</option>
+                                    <option value="1">Loamy Soil (1)</option>
+                                    <option value="2">Black Soil (2)</option>
+                                    <option value="3">Clayey Soil (3)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-custom-success text-white w-100 shadow-sm">Get Smart Recommendations & Analytics</button>
+                    </form>
+
+                    <!-- Prediction Result Display -->
+                    {% if prediction_text %}
+                    <div class="alert alert-success mt-4 rounded-4 p-4 border-0 shadow-sm" style="background-color: #e8f5ec; color: #0f5132;">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h4 class="mb-0 fw-bold">🌾 Recommended Crop: {{ predicted_crop.capitalize() }}</h4>
+                            <button onclick="window.print()" class="btn btn-sm btn-dark rounded-pill px-3">🖨️ Print Report</button>
+                        </div>
+                        <hr>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p class="mb-1">✔️ Recommended Fertilizer: <strong>{{ prediction_text }}</strong></p>
+                                <p class="mb-1">✔️ Alternative Fertilizer: <strong>{{ alternative }}</strong></p>
+                                <p class="mb-1">✔️ Required Dosage: <strong>{{ quantity }}</strong></p>
+                            </div>
+                            <div class="col-md-6">
+                                <p class="mb-1">✔️ Confidence Score: <strong>{{ confidence }}%</strong></p>
+                            </div>
+                        </div>
+                        <p class="mt-2 mb-3 text-secondary small"><strong>Explanation:</strong> {{ explanation }}</p>
+                        
+                        <hr class="opacity-25">
+                        <h6 class="fw-bold text-dark">📋 Expert Application & Soil Health Guide:</h6>
+                        <ul class="mb-0 small text-secondary">
+                            <li><strong>Application Method:</strong> {{ guide.application }}</li>
+                            <li><strong>Irrigation Advice:</strong> {{ guide.irrigation }}</li>
+                            <li><strong>Soil Care Tip:</strong> {{ guide.soil_tip }}</li>
+                        </ul>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Analytics Chart Section -->
+                {% if history %}
+                <div class="main-card p-4 mb-4">
+                    <h5 class="text-success fw-bold mb-3"><i class="fa-solid fa-chart-line me-2"></i>Soil Nutrient Analytics (Recent Tests)</h5>
+                    <canvas id="soilAnalyticsChart" width="400" height="150"></canvas>
+                </div>
+
+                <!-- History Section -->
+                <div class="main-card p-4">
+                    <h5 class="text-success fw-bold mb-3"><i class="fa-solid fa-clock-rotate-left me-2"></i>Your Prediction History</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-success">
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Location</th>
+                                    <th>N-P-K</th>
+                                    <th>Crop</th>
+                                    <th>Fertilizer</th>
+                                    <th>Alternative</th>
+                                    <th>Quantity</th>
+                                    <th>Confidence</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in history %}
+                                <tr>
+                                    <td class="small">{{ row[0] }}</td>
+                                    <td>{{ row[1] }}</td>
+                                    <td>{{ row[2] }}, {{ row[3] }}, {{ row[4] }}</td>
+                                    <td><span class="badge bg-success bg-opacity-10 text-success border border-success px-2 py-1">{{ row[6].capitalize() }}</span></td>
+                                    <td><strong>{{ row[7] }}</strong></td>
+                                    <td class="text-muted small">{{ row[8] }}</td>
+                                    <td class="small">{{ row[9] }}</td>
+                                    <td><span class="badge bg-primary">{{ row[10] }}%</span></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        $('#fetchWeatherBtn').click(function() {
+            const city = $('#cityInput').val();
+            if(!city) {
+                alert('Please enter a city name first!');
+                return;
+            }
+            $('#weatherStatus').text('Fetching live weather...');
+            
+            $.post('/get_weather', {city: city}, function(data) {
+                if(data.success) {
+                    $('#tempField').val(data.temperature);
+                    $('#humidityField').val(data.humidity);
+                    $('#hiddenCity').val(city);
+                    $('#weatherStatus').text('✔ Weather fetched successfully! (Temp: ' + data.temperature + '°C, Humidity: ' + data.humidity + '%)');
+                    $('#weatherStatus').removeClass('text-danger').addClass('text-success');
+                } else {
+                    $('#weatherStatus').text('❌ ' + data.message);
+                    $('#weatherStatus').removeClass('text-success').addClass('text-danger');
+                }
+            });
+        });
+
+        {% if history %}
+        const historyData = {{ history | tojson }};
+        const labels = historyData.map(row => row[0]).reverse();
+        const nitrogenVals = historyData.map(row => row[2]).reverse();
+        const phosphorusVals = historyData.map(row => row[3]).reverse();
+        const potassiumVals = historyData.map(row => row[4]).reverse();
+
+        const ctx = document.getElementById('soilAnalyticsChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Nitrogen (N)',
+                        data: nitrogenVals,
+                        borderColor: '#198754',
+                        backgroundColor: 'rgba(25, 135, 84, 0.1)',
+                        tension: 0.3,
+                        fill: true
+                    },
+                    {
+                        label: 'Phosphorus (P)',
+                        data: phosphorusVals,
+                        borderColor: '#ffc107',
+                        tension: 0.3
+                    },
+                    {
+                        label: 'Potassium (K)',
+                        data: potassiumVals,
+                        borderColor: '#0dcaf0',
+                        tension: 0.3
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+        {% endif %}
+    </script>
+</body>
+</html>
